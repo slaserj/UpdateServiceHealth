@@ -18,15 +18,15 @@ namespace UpdateServiceHealth
 
         private static void Main(string[] args)
         {
-            var dt = getAllEnvironmentSecDB("TESTSESOSQL", "Jenkins");
+            var dt = getAllEnvironmentSecDB("TESTSESOSQL", "Jenkins"); //Retrieve the list of security databases from the specified server -- DT -> (SESecurityDB, EnvironmentID, SEDbServer)
             var allEndpoints = new List<endpointData>();
-            foreach (DataRow row in dt.Rows)
+            foreach (DataRow row in dt.Rows) //iterates through the security databases
             {
 
                 if (!string.IsNullOrEmpty(row["SESecurityDB"].ToString()))
                 {
-                    var ed = getEndpoints(row["SESecurityDB"].ToString(), "TESTSESOSQL");
-                    allEndpoints.Add(ed);
+                    var ed = getEndpoints(row["SESecurityDB"].ToString(), row["SEDbServer"].ToString(), row["EnvironmentID"].ToString()); //pulls endpoints from a specified environment
+                    allEndpoints.Add(ed); 
                 }
             }
             foreach (var data in allEndpoints)
@@ -81,7 +81,7 @@ namespace UpdateServiceHealth
             DataTable dt = new DataTable();
 
 
-            string cmdtxt = $"SELECT SESecurityDB FROM [{EnviromnentsDB}].[dbo].[ENVIRONMENTS]";
+            string cmdtxt = $"SELECT SESecurityDB, EnvironmentID, SEDbServer  FROM [{EnviromnentsDB}].[dbo].[ENVIRONMENTS]";
             SqlCommand cmd = new SqlCommand(cmdtxt, sqlConn1);
             sqlConn1.Open();
 
@@ -99,7 +99,7 @@ namespace UpdateServiceHealth
             return dt;
 
         }
-        static endpointData getEndpoints(string env, string SQLServer) 
+        static endpointData getEndpoints(string env, string SQLServer, string EnvID) 
         {
             string ConnectionString = $"Data Source={SQLServer};Initial Catalog={env};Integrated Security=SSPI;";
             SqlConnection sqlConn1 = new SqlConnection(ConnectionString);
@@ -122,7 +122,7 @@ namespace UpdateServiceHealth
                 {
                     if (e is SqlException)
                     {
-                        log("Unable to connect to DB: " + env);
+                        log("Unable to connect to DB: " + env + "  @" + SQLServer);
                     }
                     else log(e.ToString());
                     return null;
@@ -159,7 +159,7 @@ namespace UpdateServiceHealth
 
             endpointData ed = new endpointData();
             //log(env + dt.Rows[0]["Address"].ToString() + dt2.Rows[0]["Address"].ToString());
-            ed.enviromnent = env;
+            ed.enviromnent = EnvID;
             ed.tcpEndpoint = dt.Rows[0]["Address"].ToString();
             ed.httpEndpoint = dt2.Rows[0]["Address"].ToString();
             return ed;
@@ -185,7 +185,7 @@ namespace UpdateServiceHealth
             string ConnectionString = $"Data Source={ReportServer};Initial Catalog={ReportDB};Integrated Security=SSPI;";
             var sqlConn1 = new SqlConnection(ConnectionString);
             sqlConn1.Open();
-            string cmdtxt = "INSERT INTO dbo.SERVICE_HEALTH([EnvironmentName],[TCPCheck]) VALUES(@environment, @TCPHealth)";
+            string cmdtxt = "INSERT INTO dbo.SERVICE_HEALTH([EnvironmentID],[TCPCheck], [LastChecked]) VALUES(@environment, @TCPHealth, @QTime)";
             var cmd = new SqlCommand(cmdtxt, sqlConn1);
             var p1 = new SqlParameter();
             p1.ParameterName = "@environment";
@@ -193,8 +193,16 @@ namespace UpdateServiceHealth
             cmd.Parameters.Add(p1);
             var p2 = new SqlParameter();
             p2.ParameterName = "@TCPHealth";
-            p2.Value = toWrite.tcpHealth.ToString();
+            if (toWrite.tcpHealth.ToString().Equals("False")){
+                p2.Value = 0;
+            }
+            else
+                p2.Value = 1;
             cmd.Parameters.Add(p2);
+            var p3 = new SqlParameter();
+            p3.ParameterName = "@QTime";
+            p3.Value = toWrite.polltime;
+            cmd.Parameters.Add(p3);
             var reader = cmd.ExecuteReader();
             reader.Close();
             sqlConn1.Close();
