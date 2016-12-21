@@ -12,26 +12,24 @@ namespace UpdateServiceHealth
 {
     class Program
     {
-        static int timeout = 5; //seconds 
-        static string ReportServer = "TESTSESOSQL";
-        static string ReportDB = "JENKINS";
+        const int timeout = 5; //seconds 
+        const string ReportServer = "TESTSESOSQL";
+        const string ReportDB = "JENKINS";
 
-
-
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            DataTable dt = getAllEnvironmentSecDB("TESTSESOSQL", "Jenkins");
-            List<endpointData> allEndpoints = new List<endpointData>();
+            var dt = getAllEnvironmentSecDB("TESTSESOSQL", "Jenkins");
+            var allEndpoints = new List<endpointData>();
             foreach (DataRow row in dt.Rows)
             {
-                string s = row["SESecurityDB"].ToString();
-                if (s != null)
+
+                if (!string.IsNullOrEmpty(row["SESecurityDB"].ToString()))
                 {
-                    endpointData ed = getEndpoints(s, "TESTSESOSQL");
+                    var ed = getEndpoints(row["SESecurityDB"].ToString(), "TESTSESOSQL");
                     allEndpoints.Add(ed);
                 }
             }
-            foreach (endpointData data in allEndpoints)
+            foreach (var data in allEndpoints)
             {
 
                 if (data != null)
@@ -46,7 +44,7 @@ namespace UpdateServiceHealth
             }
             Console.ReadKey();
         }
-        static Boolean checkTcpPort(int port, String address, int timeout)
+        static bool checkTcpPort(int port, String address, int timeout)
         {
             bool isAvailable = false;
             using (var client = new TcpClient())
@@ -76,20 +74,20 @@ namespace UpdateServiceHealth
             }
             return isAvailable;
         }
-        static DataTable getAllEnvironmentSecDB(String SQLServer, String EnviromnentsDB)
+        static DataTable getAllEnvironmentSecDB(string SQLServer, string EnviromnentsDB)
         {
-            string ConnectionString = "Data Source=" + SQLServer + ";" + "Initial Catalog=" + EnviromnentsDB + ";" + "Integrated Security=SSPI;";
+            string ConnectionString = $"Data Source={SQLServer};Initial Catalog={EnviromnentsDB};Integrated Security=SSPI;";
             SqlConnection sqlConn1 = new SqlConnection(ConnectionString);
             DataTable dt = new DataTable();
 
 
-            string cmdtxt = "SELECT SESecurityDB FROM[" + EnviromnentsDB + "].[dbo].[ENVIRONMENTS]";
+            string cmdtxt = $"SELECT SESecurityDB FROM [{EnviromnentsDB}].[dbo].[ENVIRONMENTS]";
             SqlCommand cmd = new SqlCommand(cmdtxt, sqlConn1);
             sqlConn1.Open();
 
-            using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+            using (var adapter = new SqlDataAdapter(cmd))
             {
-                int rows_returned = adapter.Fill(dt);
+                adapter.Fill(dt);
             }
 
             sqlConn1.Close();
@@ -101,23 +99,23 @@ namespace UpdateServiceHealth
             return dt;
 
         }
-        static endpointData getEndpoints(String env, String SQLServer) 
+        static endpointData getEndpoints(string env, string SQLServer) 
         {
-            string ConnectionString = "Data Source=" + SQLServer + ";" + "Initial Catalog=" + env + ";" + "Integrated Security=SSPI;";
+            string ConnectionString = $"Data Source={SQLServer};Initial Catalog={env};Integrated Security=SSPI;";
             SqlConnection sqlConn1 = new SqlConnection(ConnectionString);
             DataTable dt = new DataTable();
             DataTable dt2 = new DataTable();
 
 
-            string cmdtxt = "SELECT TOP 1 Address FROM[" + env + "].[dbo].[SEC11_EnvironmentEndpoints] WHERE Address like '%net.tcp%' and DatabaseId <> 'DEV_LOCAL'";
-            using (SqlCommand cmd = new SqlCommand(cmdtxt, sqlConn1))
+            string cmdtxt = $"SELECT TOP 1 Address FROM[{env}].[dbo].[SEC11_EnvironmentEndpoints] WHERE Address like '%net.tcp%' and DatabaseId <> 'DEV_LOCAL'";
+            using (var cmd = new SqlCommand(cmdtxt, sqlConn1))
             {
                 try
                 {
                     sqlConn1.Open();
-                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                    using (var adapter = new SqlDataAdapter(cmd))
                     {
-                        int rows_returned = adapter.Fill(dt);
+                        adapter.Fill(dt);
                     }
                 }
                 catch (Exception e)
@@ -131,14 +129,14 @@ namespace UpdateServiceHealth
                     //throw e;
                 }
             }
-            string cmdtxt2 = "SELECT TOP 1 Address FROM[" + env + "].[dbo].[SEC11_EnvironmentEndpoints] WHERE Address like '%http%' and DatabaseId <> 'DEV_LOCAL'";
-            using (SqlCommand cmd2 = new SqlCommand(cmdtxt2, sqlConn1))
+            string cmdtxt2 = $"SELECT TOP 1 Address FROM[{env}].[dbo].[SEC11_EnvironmentEndpoints] WHERE Address like '%http%' and DatabaseId <> 'DEV_LOCAL'";
+            using (var cmd2 = new SqlCommand(cmdtxt2, sqlConn1))
             {
                 try
                 {
-                    using (SqlDataAdapter adapter2 = new SqlDataAdapter(cmd2))
+                    using (var adapter2 = new SqlDataAdapter(cmd2))
                     {
-                        int rows_returned2 = adapter2.Fill(dt2);
+                        adapter2.Fill(dt2);
                     }
                 }
                 catch (Exception e)
@@ -166,79 +164,73 @@ namespace UpdateServiceHealth
             ed.httpEndpoint = dt2.Rows[0]["Address"].ToString();
             return ed;
         }
-        static void log(String s)
+        static void log(string s)
         {
             Console.WriteLine(s);
         }
-        static String printDataTable(DataTable dt)
+        //static string printDataTable(DataTable dt)
+        //{
+        //    string s = null;
+        //    foreach (DataRow dataRow in dt.Rows)
+        //    {
+        //        foreach (var item in dataRow.ItemArray)
+        //        {
+        //            s += item;
+        //        }
+        //    }
+        //    return s;
+        //}
+        static bool writeSqlResults(endpointData toWrite)
         {
-            String s = null;
-            foreach (DataRow dataRow in dt.Rows)
-            {
-                foreach (var item in dataRow.ItemArray)
-                {
-                    s += item;
-                }
-            }
-            return s;
-        }
-        static Boolean writeSqlResults(endpointData toWrite)
-        {
-            string ConnectionString = "Data Source=" + ReportServer + ";" + "Initial Catalog=" + ReportDB + ";" + "Integrated Security=SSPI;";
-            SqlConnection sqlConn1 = new SqlConnection(ConnectionString);
+            string ConnectionString = $"Data Source={ReportServer};Initial Catalog={ReportDB};Integrated Security=SSPI;";
+            var sqlConn1 = new SqlConnection(ConnectionString);
             sqlConn1.Open();
             string cmdtxt = "INSERT INTO dbo.SERVICE_HEALTH([EnvironmentName],[TCPCheck]) VALUES(@environment, @TCPHealth)";
-            SqlCommand cmd = new SqlCommand(cmdtxt, sqlConn1);
-            SqlParameter p1 = new SqlParameter();
+            var cmd = new SqlCommand(cmdtxt, sqlConn1);
+            var p1 = new SqlParameter();
             p1.ParameterName = "@environment";
             p1.Value = toWrite.enviromnent;
             cmd.Parameters.Add(p1);
-            SqlParameter p2 = new SqlParameter();
+            var p2 = new SqlParameter();
             p2.ParameterName = "@TCPHealth";
             p2.Value = toWrite.tcpHealth.ToString();
             cmd.Parameters.Add(p2);
-            SqlDataReader reader = cmd.ExecuteReader();
-            if( reader != null)
-            {
-                reader.Close();
-            }
-            if (sqlConn1 != null)
-            {
-                sqlConn1.Close();
-            }
+            var reader = cmd.ExecuteReader();
+            reader.Close();
+            sqlConn1.Close();
             return true;
 
         }
         class endpointData
         {
-            public string enviromnent = null;
-            public string tcpEndpoint = null;
-            public string httpEndpoint = null;
-            public int tcpPort = 0;
-            public string serv = null;
-            public int httpPort = 0;
-            public Boolean tcpHealth = false;
-            public Boolean httpHealth = false;
+            public string enviromnent;
+            public string tcpEndpoint;
+            public string httpEndpoint;
+            public int tcpPort;
+            public string serv;
+            public int httpPort;
+            public bool tcpHealth;
+            public bool httpHealth = false;
             public DateTime polltime;
 
             public endpointData()
             {
                 polltime = DateTime.Now;
             }
-            public endpointData(string a, string b, string c)
-            {
-                enviromnent = a;
-                tcpEndpoint = b;
-                httpEndpoint = c;
-            }
+            //public endpointData(string a, string b, string c)
+            //{
+            //    enviromnent = a;
+            //    tcpEndpoint = b;
+            //    httpEndpoint = c;
+            //}
             public void extractInfo()
             {
-                string pattern = @":\/\/(.+):(\d+)\/";
-                Regex rgx = new Regex(pattern, RegexOptions.IgnoreCase);
-                MatchCollection matches = rgx.Matches(tcpEndpoint);
+                const string pattern = @":\/\/(.+):(\d+)\/";
+                var rgx = new Regex(pattern, RegexOptions.IgnoreCase);
+                var matches = rgx.Matches(tcpEndpoint);
                 serv = matches[0].Groups[1].Value;
                 tcpPort = Convert.ToInt32(matches[0].Groups[2].Value);
-                MatchCollection matches2 = rgx.Matches(httpEndpoint);
+                var matches2 = rgx.Matches(httpEndpoint);
                 httpPort = Convert.ToInt32(matches2[0].Groups[2].Value);
                 polltime = DateTime.Now;
             }
