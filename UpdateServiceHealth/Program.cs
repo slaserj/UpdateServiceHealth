@@ -13,19 +13,20 @@ namespace UpdateServiceHealth
     class Program
     {
         const int timeout = 5; //seconds 
-        const string ReportServer = "TESTSESOSQL";
+        const string ReportServer = "TESTSESOSQL.ddc.local";
         const string ReportDB = "JENKINS";
+        const string fqdn = ".ddc.local";
 
         private static void Main(string[] args)
         {
-            var dt = getAllEnvironmentSecDB("TESTSESOSQL", "Jenkins"); //Retrieve the list of security databases from the specified server -- DT -> (SESecurityDB, EnvironmentID, SEDbServer)
+            var dt = getAllEnvironmentSecDB(ReportServer, ReportDB); //Retrieve the list of security databases from the specified server -- DT -> (SESecurityDB, EnvironmentID, SEDbServer)
             var allEndpoints = new List<endpointData>();
             foreach (DataRow row in dt.Rows) //iterates through the security databases
             {
 
                 if (!string.IsNullOrEmpty(row["SESecurityDB"].ToString()))
                 {
-                    var ed = getEndpoints(row["SESecurityDB"].ToString(), row["SEDbServer"].ToString(), row["EnvironmentID"].ToString()); //pulls endpoints from a specified environment
+                    var ed = getEndpoints(row["SESecurityDB"].ToString(), (row["SEDbServer"].ToString()+fqdn), row["EnvironmentID"].ToString()); //pulls endpoints from a specified environment
                     allEndpoints.Add(ed); 
                 }
             }
