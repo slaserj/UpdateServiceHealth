@@ -186,7 +186,13 @@ namespace UpdateServiceHealth
             string ConnectionString = $"Data Source={ReportServer};Initial Catalog={ReportDB};Integrated Security=SSPI;";
             var sqlConn1 = new SqlConnection(ConnectionString);
             sqlConn1.Open();
-            string cmdtxt = "INSERT INTO dbo.SERVICE_HEALTH([EnvironmentID],[TCPCheck], [LastChecked]) VALUES(@environment, @TCPHealth, @QTime)";
+
+            string cmdtxt = "IF NOT EXISTS (SELECT 0 FROM dbo.SERVICE_HEALTH WHERE [EnvironmentID] = @environment) " +
+                            "BEGIN " +
+                            "INSERT INTO dbo.SERVICE_HEALTH([EnvironmentID],[TCPCheck], [LastChecked]) VALUES(@environment, @TCPHealth, @QTime) " +
+                            "END " +
+                            "ELSE " +
+                            "UPDATE dbo.SERVICE_HEALTH SET [TCPCheck] = @TCPHealth, [LastChecked] = @QTime WHERE [EnvironmentId] = @environment";
             var cmd = new SqlCommand(cmdtxt, sqlConn1);
             var p1 = new SqlParameter();
             p1.ParameterName = "@environment";
