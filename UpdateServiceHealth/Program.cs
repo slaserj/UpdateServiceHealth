@@ -43,7 +43,6 @@ namespace UpdateServiceHealth
                 else log("No SQL information here, earlier connection errored");
                 
             }
-            Console.ReadKey();
         }
         static bool checkTcpPort(int port, String address, int timeout)
         {
@@ -167,7 +166,11 @@ namespace UpdateServiceHealth
         }
         static void log(string s)
         {
-            Console.WriteLine(s);
+            using (System.IO.StreamWriter file =
+                new System.IO.StreamWriter(@"log" + DateTime.Now.ToFileTime() + ".txt"))
+            {
+                file.WriteLine(DateTime.Now + ":   " + s);
+            }
         }
         //static string printDataTable(DataTable dt)
         //{
