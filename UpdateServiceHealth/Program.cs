@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -16,6 +17,7 @@ namespace UpdateServiceHealth
         const string ReportServer = "TESTSESOSQL.ddc.local";
         const string ReportDB = "JENKINS";
         const string fqdn = ".ddc.local";
+        const string path = "log.txt";
 
         private static void Main(string[] args)
         {
@@ -164,12 +166,20 @@ namespace UpdateServiceHealth
             ed.httpEndpoint = dt2.Rows[0]["Address"].ToString();
             return ed;
         }
-        static void log(string s)
+        static Boolean log(string s)
         {
-            using (System.IO.StreamWriter file =
-                new System.IO.StreamWriter(@"log" + DateTime.Now.ToFileTime() + ".txt"))
+            if (!File.Exists(path))
             {
-                file.WriteLine(DateTime.Now + ":   " + s);
+                using (StreamWriter sw = File.CreateText(path))
+                {
+                    sw.WriteLine(DateTime.Now + ":::" + s);
+                    return true;
+                }
+            }
+            using (StreamWriter sw = File.AppendText(path))
+            {
+                sw.WriteLine(DateTime.Now + ":::" + s);
+                return true;
             }
         }
         //static string printDataTable(DataTable dt)
